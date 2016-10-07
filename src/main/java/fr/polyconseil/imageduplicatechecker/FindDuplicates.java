@@ -7,7 +7,7 @@ import java.io.RandomAccessFile;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -44,7 +44,7 @@ public class FindDuplicates {
                 String extension = FilenameUtils.getExtension(child.getName());
                 if (ALLOWED_FILE_EXTENTIONS.contains(extension)) {
                     String hash = leanAlgorithm ? makeHashLean(child) : makeHashQuick(child);
-                    List<String> filenameList = lists.get(hash);
+                    List<String> filenameList = duplicatesMap.get(hash);
                     if (filenameList == null) {
                         filenameList = new LinkedList<String>();
                         duplicatesMap.put(hash, filenameList);
@@ -115,7 +115,7 @@ public class FindDuplicates {
             e.printStackTrace();
         }
         for (List<String> filenameList : duplicatesMap.values()) {
-            if (!filenameList.isEmpty()) {
+            if (filenameList.size() > 1) {
                 for (String filename : filenameList) {
                     System.out.println(filename);
                 }
