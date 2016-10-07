@@ -23,7 +23,8 @@ import org.apache.commons.io.FilenameUtils;
  */
 public class FindDuplicates {
     private static MessageDigest md;
-    private static String notAllowedFileName = "staticassets";
+    private static final String NOT_ALLOWED_FILENAME = "staticassets";
+    private static final List<String> ALLOWED_FILE_EXTENTIONS = Arrays.asList("png","jpg");
     static {
         try {
             md = MessageDigest.getInstance("SHA-512");
@@ -32,27 +33,23 @@ public class FindDuplicates {
         }
     }
 
-    public static void find(Map<String, List<String>> lists, File directory, boolean leanAlgorithm) throws Exception  {
-        String hash;
+    public static void find(Map<String, List<String>> duplicatesMap, File directory, boolean leanAlgorithm) throws Exception  {
         for (File child : directory.listFiles()) {
-        if (child.getPath().contains(notAllowedFileName)) {
+        if (child.getPath().contains(NOT_ALLOWED_FILENAME)) {
         return;
         } else if (child.isDirectory()) {
-                find(lists, child, leanAlgorithm);
+                find(duplicatesMap, child, leanAlgorithm);
             } else {
                 try {
-                List<String> allowedFileExtension= new ArrayList<String>();
-                allowedFileExtension.add("png");
-                allowedFileExtension.add("jpg");
                 String extension = FilenameUtils.getExtension(child.getName());
-                if (allowedFileExtension.contains(extension)) {
-                    hash = leanAlgorithm ? makeHashLean(child) : makeHashQuick(child);
-                    List<String> list = lists.get(hash);
-                    if (list == null) {
-                        list = new LinkedList<String>();
-                        lists.put(hash, list);
+                if (ALLOWED_FILE_EXTENTIONS.contains(extension)) {
+                    String hash = leanAlgorithm ? makeHashLean(child) : makeHashQuick(child);
+                    List<String> filenameList = lists.get(hash);
+                    if (filenameList == null) {
+                        filenameList = new LinkedList<String>();
+                        duplicatesMap.put(hash, filenameList);
                     }
-                    list.add(child.getAbsolutePath());
+                    filenameList.add(child.getAbsolutePath());
                 }
                 } catch (IOException e) {
                     throw new RuntimeException("cannot read file " + child.getAbsolutePath(), e);
@@ -100,31 +97,30 @@ public class FindDuplicates {
     }
 
     public static void main(String[] args) {
-    List<String> args1 = new ArrayList<String>();
-    args1.add("/Users/wzhang/dev/autoslave/autoslave");
-        if (args1.size() < 1) {
+    //List<String> args1 = new ArrayList<String>();
+    //args1.add("/Users/wzhang/dev/autoslave/autoslave");
+        if (args.length < 1) {
             System.out.println("Please supply a path to directory to find duplicate files in.");
             return;
         }
-        File dir = new File(args1.get(0));
+        File dir = new File(args[0]);
         if (!dir.isDirectory()) {
             System.out.println("Supplied directory does not exist.");
             return;
         }
-        Map<String, List<String>> lists = new HashMap<String, List<String>>();
+        Map<String, List<String>> duplicatesMap = new HashMap<String, List<String>>();
         try {
-            FindDuplicates.find(lists, dir, args1.size() == 1 || !args1.get(1).equals("-quick"));
+            FindDuplicates.find(duplicatesMap, dir, args.length == 1 || !args[0].equals("-quick"));
         } catch (Exception e) {
             e.printStackTrace();
         }
-        for (List<String> list : lists.values()) {
-            if (list.size() > 1) {
-                System.out.println("--");
-                for (String file : list) {
-                    System.out.println(file);
+        for (List<String> filenameList : duplicatesMap.values()) {
+            if (!filenameList.isEmpty()) {
+                for (String filename : filenameList) {
+                    System.out.println(filename);
                 }
+                System.out.println("--");
             }
         }
-        System.out.println("--");
     }
 }
