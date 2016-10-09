@@ -98,19 +98,8 @@ public class FindDuplicates {
         return hash;
     }
 
-    //List<String> args1 = new ArrayList<String>();
-    //args1.add("/Users/wzhang/dev/autoslave/autoslave");
     public static void execute(String str, TaskListener listener) {
-    	//String str = "/Users/weiweizhang/Documents/workspace/images_checker_test_folders";
-        if (str.isEmpty()) {
-            System.out.println("Please supply a path to directory to find duplicate files in.");
-            return;
-        }
         File dir = new File(str);
-        if (!dir.isDirectory()) {
-            System.out.println("Supplied directory (" + str  + ") does not exist.");
-            return;
-        }
         Map<String, List<String>> duplicatesMap = new HashMap<String, List<String>>();
         try {
             FindDuplicates.find(duplicatesMap, dir, true);

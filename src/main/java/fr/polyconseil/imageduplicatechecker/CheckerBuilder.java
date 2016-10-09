@@ -1,4 +1,5 @@
 package fr.polyconseil.imageduplicatechecker;
+import java.io.File;
 import java.io.IOException;
 
 import javax.servlet.ServletException;
@@ -27,7 +28,7 @@ import net.sf.json.JSONObject;
  * <p>
  * When the user configures the project and enables this builder,
  * {@link DescriptorImpl#newInstance(StaplerRequest)} is invoked
- * and a new {@link HelloWorldBuilder} is created. The created
+ * and a new {@link CheckerBuilder} is created. The created
  * instance is persisted to the project configuration XML by using
  * XStream, so this allows you to use instance fields (like {@link #name})
  * to remember the configuration.
@@ -35,15 +36,15 @@ import net.sf.json.JSONObject;
  * <p>
  * When a build is performed, the {@link #perform} method will be invoked. 
  *
- * @author Kohsuke Kawaguchi
+ * @author Weiwei ZHANG
  */
-public class HelloWorldBuilder extends Publisher implements SimpleBuildStep {
+public class CheckerBuilder extends Publisher implements SimpleBuildStep {
 
     private final String name;
 
     // Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
     @DataBoundConstructor
-    public HelloWorldBuilder(String name) {
+    public CheckerBuilder(String name) {
         this.name = name;
     }
 
@@ -68,29 +69,11 @@ public class HelloWorldBuilder extends Publisher implements SimpleBuildStep {
         return (DescriptorImpl)super.getDescriptor();
     }
 
-    /**
-     * Descriptor for {@link HelloWorldBuilder}. Used as a singleton.
-     * The class is marked as public so that it can be accessed from views.
-     *
-     * <p>
-     * See {@code src/main/resources/hudson/plugins/hello_world/HelloWorldBuilder/*.jelly}
-     * for the actual HTML fragment for the configuration screen.
-     */
     @Extension // This indicates to Jenkins that this is an implementation of an extension point.
     public static final class DescriptorImpl extends BuildStepDescriptor<Publisher> {
-        /**
-         * To persist global configuration information,
-         * simply store it in a field and call save().
-         *
-         * <p>
-         * If you don't want fields to be persisted, use {@code transient}.
-         */
-        private String addPath;
 
-        /**
-         * In order to load the persisted global configuration, you have to 
-         * call load() in the constructor.
-         */
+    	private String addPath;
+
         public DescriptorImpl() {
             load();
         }
@@ -109,10 +92,14 @@ public class HelloWorldBuilder extends Publisher implements SimpleBuildStep {
          */
         public FormValidation doCheckName(@QueryParameter String value)
                 throws IOException, ServletException {
-            if (value.length() == 0)
-                return FormValidation.error("Please set a name");
-            if (value.length() < 4)
-                return FormValidation.warning("Isn't the name too short?");
+            if (value.isEmpty())
+            	return FormValidation.error("Please supply a path to directory to find duplicate files in.");
+            if (value.length() < 2)
+                return FormValidation.warning("Isn't the folder path too short?");
+            File dir = new File(value);
+            if (!dir.isDirectory()) {
+            	return FormValidation.error("Supplied directory (" + value  + ") does not exist.");
+            }
             return FormValidation.ok();
         }
 
