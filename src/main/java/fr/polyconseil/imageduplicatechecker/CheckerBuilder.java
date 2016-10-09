@@ -59,6 +59,7 @@ public class CheckerBuilder extends Publisher implements SimpleBuildStep {
     @Override
     public void perform(Run<?,?> build, FilePath workspace, Launcher launcher, TaskListener listener) {
         listener.getLogger().println("Starting scanning folder: "+name+"!");
+        // TODO(wzhang): Use workspace to checker dependencies in /build
         FindDuplicates.execute(name, listener);
     }
 
