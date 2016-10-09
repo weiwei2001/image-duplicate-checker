@@ -1,21 +1,23 @@
 package fr.polyconseil.imageduplicatechecker;
-import hudson.Launcher;
+import java.io.IOException;
+
+import javax.servlet.ServletException;
+
+import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.StaplerRequest;
+
 import hudson.Extension;
 import hudson.FilePath;
-import hudson.util.FormValidation;
+import hudson.Launcher;
 import hudson.model.AbstractProject;
 import hudson.model.Run;
 import hudson.model.TaskListener;
-import hudson.tasks.Builder;
 import hudson.tasks.BuildStepDescriptor;
+import hudson.tasks.Builder;
+import hudson.util.FormValidation;
 import jenkins.tasks.SimpleBuildStep;
 import net.sf.json.JSONObject;
-import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.QueryParameter;
-
-import javax.servlet.ServletException;
-import java.io.IOException;
 
 /**
  * Sample {@link Builder}.
@@ -60,6 +62,9 @@ public class HelloWorldBuilder extends Builder implements SimpleBuildStep {
             listener.getLogger().println("Bonjour, "+name+"!");
         else
             listener.getLogger().println("Hello, "+name+"!");
+        
+        listener.getLogger().println("Starting scanning folder: "+name+"!");
+        FindDuplicates.execute(name, listener);
     }
 
     // Overridden for better type safety.
@@ -127,7 +132,7 @@ public class HelloWorldBuilder extends Builder implements SimpleBuildStep {
          * This human readable name is used in the configuration screen.
          */
         public String getDisplayName() {
-            return "Say hello world";
+            return "Check duplicate images";
         }
 
         @Override

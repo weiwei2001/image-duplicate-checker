@@ -13,6 +13,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import hudson.model.TaskListener;
+
 import org.apache.commons.io.FilenameUtils;
 
 /*
@@ -96,28 +98,31 @@ public class FindDuplicates {
         return hash;
     }
 
-    public static void main(String[] args) {
     //List<String> args1 = new ArrayList<String>();
     //args1.add("/Users/wzhang/dev/autoslave/autoslave");
-        if (args.length < 1) {
+    public static void execute(String str, TaskListener listener) {
+    	//String str = "/Users/weiweizhang/Documents/workspace/images_checker_test_folders";
+        if (str.isEmpty()) {
             System.out.println("Please supply a path to directory to find duplicate files in.");
             return;
         }
-        File dir = new File(args[0]);
+        File dir = new File(str);
         if (!dir.isDirectory()) {
-            System.out.println("Supplied directory does not exist.");
+            System.out.println("Supplied directory (" + str  + ") does not exist.");
             return;
         }
         Map<String, List<String>> duplicatesMap = new HashMap<String, List<String>>();
         try {
-            FindDuplicates.find(duplicatesMap, dir, args.length == 1 || !args[0].equals("-quick"));
+            FindDuplicates.find(duplicatesMap, dir, true);
         } catch (Exception e) {
             e.printStackTrace();
         }
         for (List<String> filenameList : duplicatesMap.values()) {
             if (filenameList.size() > 1) {
+                listener.getLogger().println("Found results:");
                 for (String filename : filenameList) {
                     System.out.println(filename);
+                    listener.getLogger().println(filename);
                 }
                 System.out.println("--");
             }
