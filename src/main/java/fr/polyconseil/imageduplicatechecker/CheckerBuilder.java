@@ -45,6 +45,7 @@ public class CheckerBuilder extends Publisher implements SimpleBuildStep {
     // Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
     @DataBoundConstructor
     public CheckerBuilder(String name) {
+    	// TODO(wzhang): Change to image extension!
         this.name = name;
     }
 
@@ -72,6 +73,7 @@ public class CheckerBuilder extends Publisher implements SimpleBuildStep {
     @Extension // This indicates to Jenkins that this is an implementation of an extension point.
     public static final class DescriptorImpl extends BuildStepDescriptor<Publisher> {
 
+    	// TODO(wzhang): remove global config!
     	private String addPath;
 
         public DescriptorImpl() {
