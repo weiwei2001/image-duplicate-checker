@@ -14,7 +14,9 @@ import hudson.model.AbstractProject;
 import hudson.model.Run;
 import hudson.model.TaskListener;
 import hudson.tasks.BuildStepDescriptor;
+import hudson.tasks.BuildStepMonitor;
 import hudson.tasks.Builder;
+import hudson.tasks.Publisher;
 import hudson.util.FormValidation;
 import jenkins.tasks.SimpleBuildStep;
 import net.sf.json.JSONObject;
@@ -35,7 +37,7 @@ import net.sf.json.JSONObject;
  *
  * @author Kohsuke Kawaguchi
  */
-public class HelloWorldBuilder extends Builder implements SimpleBuildStep {
+public class HelloWorldBuilder extends Publisher implements SimpleBuildStep {
 
     private final String name;
 
@@ -54,15 +56,6 @@ public class HelloWorldBuilder extends Builder implements SimpleBuildStep {
 
     @Override
     public void perform(Run<?,?> build, FilePath workspace, Launcher launcher, TaskListener listener) {
-        // This is where you 'build' the project.
-        // Since this is a dummy, we just say 'hello world' and call that a build.
-
-        // This also shows how you can consult the global configuration of the builder
-        if (getDescriptor().getUseFrench())
-            listener.getLogger().println("Bonjour, "+name+"!");
-        else
-            listener.getLogger().println("Hello, "+name+"!");
-        
         listener.getLogger().println("Starting scanning folder: "+name+"!");
         FindDuplicates.execute(name, listener);
     }
@@ -71,7 +64,7 @@ public class HelloWorldBuilder extends Builder implements SimpleBuildStep {
     // If your plugin doesn't really define any property on Descriptor,
     // you don't have to do this.
     @Override
-    public DescriptorImpl getDescriptor() {
+    public BuildStepDescriptor<Publisher> getDescriptor() {
         return (DescriptorImpl)super.getDescriptor();
     }
 
@@ -84,7 +77,7 @@ public class HelloWorldBuilder extends Builder implements SimpleBuildStep {
      * for the actual HTML fragment for the configuration screen.
      */
     @Extension // This indicates to Jenkins that this is an implementation of an extension point.
-    public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
+    public static final class DescriptorImpl extends BuildStepDescriptor<Publisher> {
         /**
          * To persist global configuration information,
          * simply store it in a field and call save().
@@ -92,7 +85,7 @@ public class HelloWorldBuilder extends Builder implements SimpleBuildStep {
          * <p>
          * If you don't want fields to be persisted, use {@code transient}.
          */
-        private boolean useFrench;
+        private String addPath;
 
         /**
          * In order to load the persisted global configuration, you have to 
@@ -139,11 +132,16 @@ public class HelloWorldBuilder extends Builder implements SimpleBuildStep {
         public boolean configure(StaplerRequest req, JSONObject formData) throws FormException {
             // To persist global configuration information,
             // set that to properties and call save().
-            useFrench = formData.getBoolean("useFrench");
+            addPath = nullify(formData.getString("addPath"));
             // ^Can also use req.bindJSON(this, formData);
             //  (easier when there are many fields; need set* methods for this, like setUseFrench)
             save();
             return super.configure(req,formData);
+        }
+
+        private String nullify(String v) {
+            if(v!=null && v.length()==0)    v=null;
+            return v;
         }
 
         /**
@@ -152,9 +150,17 @@ public class HelloWorldBuilder extends Builder implements SimpleBuildStep {
          * The method name is bit awkward because global.jelly calls this method to determine
          * the initial state of the checkbox by the naming convention.
          */
-        public boolean getUseFrench() {
-            return useFrench;
+        public void setAddPath(String addPath) {
+            this.addPath = addPath;
+        }
+        public String getAddPath() {
+            return addPath;
         }
     }
+
+	@Override
+	public BuildStepMonitor getRequiredMonitorService() {
+		return BuildStepMonitor.BUILD;
+	}
 }
 
