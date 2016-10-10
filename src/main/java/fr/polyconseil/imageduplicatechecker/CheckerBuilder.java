@@ -30,37 +30,38 @@ import net.sf.json.JSONObject;
  * {@link DescriptorImpl#newInstance(StaplerRequest)} is invoked
  * and a new {@link CheckerBuilder} is created. The created
  * instance is persisted to the project configuration XML by using
- * XStream, so this allows you to use instance fields (like {@link #name})
+ * XStream, so this allows you to use instance fields (like {@link #excludedFolders})
  * to remember the configuration.
  *
  * <p>
- * When a build is performed, the {@link #perform} method will be invoked. 
+ * When a build is performed, the {@link #perform} method will be invoked.
  *
  * @author Weiwei ZHANG
  */
 public class CheckerBuilder extends Publisher implements SimpleBuildStep {
 
-    private final String name;
+    private final String excludedFolders;
+    private final String allowedFileExtensions;
 
     // Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
     @DataBoundConstructor
-    public CheckerBuilder(String name) {
-    	// TODO(wzhang): Change to image extension!
-        this.name = name;
+    public CheckerBuilder(String excludedFolders, String allowedFileExtensions) {
+        this.excludedFolders = excludedFolders;
+        this.allowedFileExtensions = allowedFileExtensions;
     }
 
-    /**
-     * We'll use this from the {@code config.jelly}.
-     */
-    public String getName() {
-        return name;
+
+    public String getExcludedFolders() {
+        return excludedFolders;
+    }
+
+    public String getAllowedFileExtensions() {
+        return allowedFileExtensions;
     }
 
     @Override
     public void perform(Run<?,?> build, FilePath workspace, Launcher launcher, TaskListener listener) {
-        listener.getLogger().println("Starting scanning folder: "+name+"!");
-        // TODO(wzhang): Use workspace to checker dependencies in /build
-        FindDuplicates.execute(name, listener);
+        FindDuplicates.execute(this.getExcludedFolders(), this.getAllowedFileExtensions(), workspace, listener);
     }
 
     // Overridden for better type safety.
@@ -74,8 +75,8 @@ public class CheckerBuilder extends Publisher implements SimpleBuildStep {
     @Extension // This indicates to Jenkins that this is an implementation of an extension point.
     public static final class DescriptorImpl extends BuildStepDescriptor<Publisher> {
 
-    	// TODO(wzhang): remove global config!
-    	private String addPath;
+        // TODO(wzhang): remove global config!
+        private String addPath;
 
         public DescriptorImpl() {
             load();
@@ -84,30 +85,32 @@ public class CheckerBuilder extends Publisher implements SimpleBuildStep {
         /**
          * Performs on-the-fly validation of the form field 'name'.
          *
-         * @param value
+         * @param excludedFolders
+         *      This parameter receives the value that the user has typed.
+         * @param allowedFileExtensions
          *      This parameter receives the value that the user has typed.
          * @return
          *      Indicates the outcome of the validation. This is sent to the browser.
          *      <p>
          *      Note that returning {@link FormValidation#error(String)} does not
          *      prevent the form from being saved. It just means that a message
-         *      will be displayed to the user. 
          */
-        public FormValidation doCheckName(@QueryParameter String value)
+        public FormValidation doCheckName(@QueryParameter String excludedFolders, @QueryParameter String allowedFileExtensions)
                 throws IOException, ServletException {
-            if (value.isEmpty())
-            	return FormValidation.error("Please supply a path to directory to find duplicate files in.");
-            if (value.length() < 2)
+            if (excludedFolders.isEmpty() || allowedFileExtensions.isEmpty())
+                return FormValidation.error("Please supply a path to directory to find duplicate files in.");
+            if (excludedFolders.length() < 2 || allowedFileExtensions.length() < 2)
                 return FormValidation.warning("Isn't the folder path too short?");
-            File dir = new File(value);
-            if (!dir.isDirectory()) {
-            	return FormValidation.error("Supplied directory (" + value  + ") does not exist.");
+            File excludedFoldersFile = new File(excludedFolders);
+            File allowedFileExtensionsFile = new File(allowedFileExtensions);
+            if (!excludedFoldersFile.isDirectory() || !allowedFileExtensionsFile.isDirectory()) {
+                return FormValidation.error("Supplied directory (" + excludedFolders  + ") does not exist.");
             }
             return FormValidation.ok();
         }
 
         public boolean isApplicable(Class<? extends AbstractProject> aClass) {
-            // Indicates that this builder can be used with all kinds of project types 
+            // Indicates that this builder can be used with all kinds of project types
             return true;
         }
 
@@ -148,9 +151,8 @@ public class CheckerBuilder extends Publisher implements SimpleBuildStep {
         }
     }
 
-	@Override
-	public BuildStepMonitor getRequiredMonitorService() {
-		return BuildStepMonitor.BUILD;
-	}
+    @Override
+    public BuildStepMonitor getRequiredMonitorService() {
+        return BuildStepMonitor.BUILD;
+    }
 }
-

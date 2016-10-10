@@ -13,9 +13,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import hudson.model.TaskListener;
-
 import org.apache.commons.io.FilenameUtils;
+
+import hudson.FilePath;
+import hudson.model.TaskListener;
 
 /*
  * an amalgamation of the memory hungry "find duplicate files" program from here ...
@@ -27,6 +28,8 @@ public class FindDuplicates {
     private static MessageDigest md;
     private static final String NOT_ALLOWED_FILENAME = "staticassets";
     private static final List<String> ALLOWED_FILE_EXTENTIONS = Arrays.asList("png","jpg");
+    private static List<String> splitExcludedFolder;
+    private static List<String> splitAllowedFileExtensions;
     static {
         try {
             md = MessageDigest.getInstance("SHA-512");
@@ -37,14 +40,15 @@ public class FindDuplicates {
 
     public static void find(Map<String, List<String>> duplicatesMap, File directory, boolean leanAlgorithm) throws Exception  {
         for (File child : directory.listFiles()) {
-        if (child.getPath().contains(NOT_ALLOWED_FILENAME)) {
-        return;
-        } else if (child.isDirectory()) {
+    		if (splitExcludedFolder.contains(FilenameUtils.getBaseName(child.getName()))) {
+    			return;
+    		}
+        	if (child.isDirectory()) {
                 find(duplicatesMap, child, leanAlgorithm);
             } else {
                 try {
                 String extension = FilenameUtils.getExtension(child.getName());
-                if (ALLOWED_FILE_EXTENTIONS.contains(extension)) {
+        		if (splitAllowedFileExtensions.contains(extension)) {
                     String hash = leanAlgorithm ? makeHashLean(child) : makeHashQuick(child);
                     List<String> filenameList = duplicatesMap.get(hash);
                     if (filenameList == null) {
@@ -98,8 +102,11 @@ public class FindDuplicates {
         return hash;
     }
 
-    public static void execute(String str, TaskListener listener) {
-        File dir = new File(str);
+    public static void execute(String excludedFolder, String allowedFileExtensions, FilePath workspace, TaskListener listener) {
+    	listener.getLogger().println("Starting scanning folder: " + workspace + "!");
+    	splitExcludedFolder = Arrays.asList(excludedFolder.split("\\s+"));
+    	splitAllowedFileExtensions = Arrays.asList(allowedFileExtensions.split("\\s+"));
+    	File dir = new File(workspace.getRemote());
         Map<String, List<String>> duplicatesMap = new HashMap<String, List<String>>();
         try {
             FindDuplicates.find(duplicatesMap, dir, true);
@@ -108,12 +115,11 @@ public class FindDuplicates {
         }
         for (List<String> filenameList : duplicatesMap.values()) {
             if (filenameList.size() > 1) {
-                listener.getLogger().println("Found results:");
+                listener.getLogger().println("Found same images in folders:");
                 for (String filename : filenameList) {
-                    System.out.println(filename);
                     listener.getLogger().println(filename);
                 }
-                System.out.println("--");
+                listener.getLogger().println("-------------------------");
             }
         }
     }
