@@ -1,17 +1,21 @@
 package fr.polyconseil.imageduplicatechecker;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.io.RandomAccessFile;
+import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.io.FilenameUtils;
 
@@ -26,8 +30,6 @@ import hudson.model.TaskListener;
  */
 public class FindDuplicates {
     private static MessageDigest md;
-    private static final String NOT_ALLOWED_FILENAME = "staticassets";
-    private static final List<String> ALLOWED_FILE_EXTENTIONS = Arrays.asList("png","jpg");
     private static List<String> splitExcludedFolder;
     private static List<String> splitAllowedFileExtensions;
     static {
@@ -41,7 +43,7 @@ public class FindDuplicates {
     public static void find(Map<String, List<String>> duplicatesMap, File directory, boolean leanAlgorithm) throws Exception  {
         for (File child : directory.listFiles()) {
     		if (splitExcludedFolder.contains(FilenameUtils.getBaseName(child.getName()))) {
-    			return;
+    			continue;
     		}
         	if (child.isDirectory()) {
                 find(duplicatesMap, child, leanAlgorithm);
@@ -91,7 +93,7 @@ public class FindDuplicates {
         int unitsize;
         while (read < offset) {
             unitsize = (int) (((offset - read) >= buffSize) ? buffSize
-: (offset - read));
+            		: (offset - read));
             file.read(buffer, 0, unitsize);
             md.update(buffer, 0, unitsize);
             read += unitsize;
@@ -101,26 +103,54 @@ public class FindDuplicates {
         String hash = new BigInteger(1, md.digest()).toString(16);
         return hash;
     }
-
-    public static void execute(String excludedFolder, String allowedFileExtensions, FilePath workspace, TaskListener listener) {
+    
+    public static void execute(String excludedFolder, String allowedFileExtensions, String sourcePathPattern, FilePath workspace, TaskListener listener) {
     	listener.getLogger().println("Starting scanning folder: " + workspace + "!");
-    	splitExcludedFolder = Arrays.asList(excludedFolder.split("\\s+"));
-    	splitAllowedFileExtensions = Arrays.asList(allowedFileExtensions.split("\\s+"));
+    	splitExcludedFolder = Arrays.asList(excludedFolder.trim().split("\\s+"));
+    	splitAllowedFileExtensions = Arrays.asList(allowedFileExtensions.trim().split("\\s+"));
     	File dir = new File(workspace.getRemote());
-        Map<String, List<String>> duplicatesMap = new HashMap<String, List<String>>();
+        Map<String, List<String>> duplicatesMap = new ConcurrentHashMap<String, List<String>>();
         try {
             FindDuplicates.find(duplicatesMap, dir, true);
         } catch (Exception e) {
             e.printStackTrace();
         }
-        for (List<String> filenameList : duplicatesMap.values()) {
-            if (filenameList.size() > 1) {
-                listener.getLogger().println("Found same images in folders:");
-                for (String filename : filenameList) {
-                    listener.getLogger().println(filename);
-                }
-                listener.getLogger().println("-------------------------");
+        
+        // for Java 8: duplicatesMap.keySet().removeIf(e->(duplicatesMap.get(e).size()<2));
+        for (String key : duplicatesMap.keySet()) {
+            if (duplicatesMap.get(key).size() < 2) {
+            	duplicatesMap.remove(key);
             }
         }
+        generateReport(sourcePathPattern, workspace, duplicatesMap);
+        listener.getLogger().println(duplicatesMap.size() + " results generated in file: " + sourcePathPattern);
     }
+
+	private static void generateReport(String sourcePathPattern, FilePath workspace, Map<String, List<String>> duplicatesMap) {
+        FilePath f = workspace.child(sourcePathPattern);
+        PrintWriter w;
+		try {
+			w = new PrintWriter(
+			    new BufferedWriter(
+			        new OutputStreamWriter(
+			            f.write(), "UTF-8")));
+            for (List<String> filenameList : duplicatesMap.values()) {
+            	w.println("Found same image in folders:");
+	        	for (String filename : filenameList) {
+	                w.println(filename);
+	        	}
+	        	w.println("---------------------------------------------------------");
+            }
+        	w.close();
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 }
