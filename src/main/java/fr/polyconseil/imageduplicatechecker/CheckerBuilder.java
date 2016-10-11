@@ -42,12 +42,14 @@ public class CheckerBuilder extends Publisher implements SimpleBuildStep {
 
     private final String excludedFolders;
     private final String allowedFileExtensions;
+    private final String sourcePathPattern;
 
     // Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
     @DataBoundConstructor
-    public CheckerBuilder(String excludedFolders, String allowedFileExtensions) {
+    public CheckerBuilder(String excludedFolders, String allowedFileExtensions, String sourcePathPattern) {
         this.excludedFolders = excludedFolders;
         this.allowedFileExtensions = allowedFileExtensions;
+        this.sourcePathPattern = sourcePathPattern;
     }
 
 
@@ -58,10 +60,14 @@ public class CheckerBuilder extends Publisher implements SimpleBuildStep {
     public String getAllowedFileExtensions() {
         return allowedFileExtensions;
     }
+    
+    public String getSourcePathPattern() {
+        return sourcePathPattern;
+    }
 
     @Override
     public void perform(Run<?,?> build, FilePath workspace, Launcher launcher, TaskListener listener) {
-        FindDuplicates.execute(this.getExcludedFolders(), this.getAllowedFileExtensions(), workspace, listener);
+        FindDuplicates.execute(this.getExcludedFolders(), this.getAllowedFileExtensions(), this.getSourcePathPattern(), workspace, listener);
     }
 
     // Overridden for better type safety.
@@ -89,13 +95,15 @@ public class CheckerBuilder extends Publisher implements SimpleBuildStep {
          *      This parameter receives the value that the user has typed.
          * @param allowedFileExtensions
          *      This parameter receives the value that the user has typed.
+         * @param sourcePathPattern
+         *      This parameter receives the value that the user has typed.
          * @return
          *      Indicates the outcome of the validation. This is sent to the browser.
          *      <p>
          *      Note that returning {@link FormValidation#error(String)} does not
          *      prevent the form from being saved. It just means that a message
          */
-        public FormValidation doCheckName(@QueryParameter String excludedFolders, @QueryParameter String allowedFileExtensions)
+        public FormValidation doCheckName(@QueryParameter String excludedFolders, @QueryParameter String allowedFileExtensions, @QueryParameter String sourcePathPattern)
                 throws IOException, ServletException {
             if (excludedFolders.isEmpty() || allowedFileExtensions.isEmpty())
                 return FormValidation.error("Please supply a path to directory to find duplicate files in.");
@@ -106,6 +114,8 @@ public class CheckerBuilder extends Publisher implements SimpleBuildStep {
             if (!excludedFoldersFile.isDirectory() || !allowedFileExtensionsFile.isDirectory()) {
                 return FormValidation.error("Supplied directory (" + excludedFolders  + ") does not exist.");
             }
+            if (sourcePathPattern.isEmpty())
+                return FormValidation.error("Please define a folder/file to write images duplacate report.");
             return FormValidation.ok();
         }
 
@@ -153,6 +163,6 @@ public class CheckerBuilder extends Publisher implements SimpleBuildStep {
 
     @Override
     public BuildStepMonitor getRequiredMonitorService() {
-        return BuildStepMonitor.BUILD;
+        return BuildStepMonitor.NONE;
     }
 }
