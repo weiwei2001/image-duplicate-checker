@@ -6,4 +6,7 @@
   <f:entry title="Allowed file extensions" field="allowedFileExtensions">
     <f:textbox />
   </f:entry>
+  <f:entry title="Pattern" field="sourcePathPattern">
+    <f:textbox />
+  </f:entry>
 </j:jelly>
